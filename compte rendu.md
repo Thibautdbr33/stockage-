@@ -43,7 +43,6 @@
 Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 
 > Assurez-vous que LVM est installé sur votre OS avant de continuer.
-- Installer lvm2 
 
 🌞 **Ajouter `sdb` comme Physical Volume LVM**
 
@@ -69,9 +68,11 @@ Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 
 🌞 **Créez un système de fichiers sur les deux LVs**
 
-- sur `smol_data` et `big_data` et utilisez ext4 : 
-- `sudo mkfs.ext4 /dev/storage/smol_data`
-- `sudo mkfs.ext4 /dev/storage/big_data`
+ 
+
+`sudo mkfs.ext4 /dev/storage/smol_data`
+
+   `sudo mkfs.ext4 /dev/storage/big_data`
 
 🌞 **Montez la partition `smol_data`**
 
@@ -93,14 +94,6 @@ Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 
 # III. RAID
 
-Dans cette section, vous allez vous servir des disques supplémentaires ajoutés à la VM.
-
-Installez `mdadm` sur votre VM, on va avoir besoin de lui pour mettre en place un RAID logiciel.
-
-Ici, pas de carte RAID physique (ou virtuelle...) qui gère un RAID bas niveau, c'est un RAID géré par un programme une fois l'OS lancé. L'OS a donc la visibilité sur les disques sous-jacents.
-
-> En effet, dans le cas d'un RAID logiciel, l'OS ne voit qu'un disque unique, qui est en réalité le RAID mis en place par la carte RAID physique.
-
 ## 1. Simple RAID
 
 🌞 **Mettre en place un RAID 5**
@@ -116,6 +109,7 @@ Ici, pas de carte RAID physique (ou virtuelle...) qui gère un RAID bas niveau, 
 🌞 **Rendre la configuration automatique au boot de la machine**
 
 - `sudo mdadm --detail --scan | sudo tee -a /etc/mdadm/mdadm.conf`
+
 - `sudo update-initramfs -u` 
 
 🌞 **Créez un système de fichiers sur la partition proposé par le RAID**
@@ -131,7 +125,8 @@ Ici, pas de carte RAID physique (ou virtuelle...) qui gère un RAID bas niveau, 
 
 - la partition est bien montée : `lsblk`
 - il y a bien l'espace disponible attendue sur la partition : `df -h /mnt/raid_storage`
-- vous pouvez lire et écrire sur la partition : `sudo touch /mnt/raid_storage/testfile`, `ls /mnt/raid_storage` 
+- vous pouvez lire et écrire sur la partition : 
+-  `sudo touch /mnt/raid_storage/testfile`, `ls /mnt/raid_storage` 
 
 > *Alors combien de Go dispo avec un RAID5 sur des disques de 10G ?* `20 Go disponible`
 
@@ -187,12 +182,12 @@ On ajoute le disque /dev/sdf au RAID en tant que disque spare :
 
 🌞 **Prouvez que le RAID5 propose désormais 4 disques actifs**
 
-- l'espace proposé devrait aussi avoir grandi
 - alors combien d'espace sur un RAID5 de 4 disques ? `30 Go disponible`
 
 🌞 **Euuuh wait a sec... `/mnt/raid_storage` ???**
 
-- Agrandissement du système de fichiers pour utiliser l’espace supplémentaire : `sudo resize2fs /dev/md0`*
+- Agrandissement du système de fichiers pour utiliser l’espace supplémentaire : `sudo resize2fs /dev/md0`
+
 - Vérification que le système de fichiers a bien été agrandi : `df -h /mnt/raid_storage`
 
 # IV. NFS
@@ -202,19 +197,39 @@ Enfin, on clôt le TP avec un **partage réseau simple à setup et relativement 
 C'est **un modèle de client/serveur** : on installe un serveur NFS sur une machine, on le configure pour indiquer quel(s) dossier(s) on veut partager sur le réseau, et d'autres machines peuvent s'y connecter pour accéder à ces dossiers.
 
 🌞 **Installer un serveur NFS**
+- Installation du server NFS : `sudo apt-get install nfs-server`
 
-- il devra exposer les deux points de montage créés des parties précédentes : `/mnt/raid_storage` et `/mnt/lvm_storage`
-- seul le réseau local du serveur NFS doit pouvoir y accéder
-- il sera nécessaire de configurer le firewall de la machine
+- Ajouter les lignes suivantes dans le fichier de conf `/etc/exports` pour partager les points de montages :
+`/mnt/raid_storage *(rw,sync)`
 
-🌞 **Pop une deuxième VM en vif**
+- Application de la configuration : `sudo exportfs -arv`
 
-- installer un client NFS pour se connecter au serveur
-- pour `/mnt/raid_storage`
-  - monter le dossier partagé `/mnt/raid_storage` du serveur
-  - sur le point de montage que vous aurez créé sur le client `/mnt/raid_storage`
-  - (même chemin aussi sur le client)
-- et idem : partage `/mnt/lvm_storage` du serveur monté sur `/mnt/lvm_storage` côté client
+    - a : Exporte tous les systèmes de fichiers.
+    - r : Réexporte tous les répertoires.
+    - v : Affiche les informations des exports.
+
+- Vérification des exports: `sudo exportfs -v`
+
+- Lancement du service NFS : `sudo systemctl start nfs-server`
+
+- Il faut maintenant Configurer le firwall pour le partage NFS ne soit actif que sur mon réseau:
+
+    - `sudo ufw allow from 192.168.248.0 to any port nfs`
+
+- Vérification du statut du firewall : `sudo ufw status`
+
+🌞 **Configurer le client NFS**
+
+- installer un client NFS pour se connecter au serveur : `sudo apt install nfs-common`
+
+- Créer les points de montage pour le partage NFS :
+  - `sudo mkdir -p /mnt/raid_storage`
+
+  - `sudo mkdir -p /mnt/lvm_storage`
+
+- Montez le partage NFS pour /mnt/raid_storage :
+
+     - `sudo mount 192.168.248.10:/mnt/raid_storage /mnt/raid_storage`
 
 🌞 **Benchmarkz**
 
@@ -222,4 +237,6 @@ C'est **un modèle de client/serveur** : on installe un serveur NFS sur une mach
 - faites un test de vitesse d'écriture sur la partition LVM montée en NFS : `/mnt/lvm_storage`
 
 > Là même avec l'environnement qui n'est pas idéal, la différence devrait être visible. Because réseau.
+
+![bobercurva](https://media.tenor.com/fF4sTbrZvnsAAAAM/bober-kurwa.gif)
 
