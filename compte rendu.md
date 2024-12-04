@@ -23,7 +23,9 @@
 
 - Affichez des informations détaillées sur le disque : `sudo smartctl -a /dev/sda`
 
-- Malheureusement , les commandes ci-dessus ne fonctionnent pas sur les disques virtuel
+- Malheureusement , les commandes ci-dessus ne fonctionnent pas sur les disques virtuel de virtual box
+
+![problem](https://media1.tenor.com/m/VpALCb0oXrQAAAAd/oss117-alerte-rouge-en-afrique-noire.gif)
 
 🌞 **Espace disque : afficher l'espace disque restant sur la partition `/`**
 
