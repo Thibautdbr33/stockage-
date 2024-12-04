@@ -2,7 +2,9 @@
 
 # 0. Prérequis
 
-➜ **une VM  Debian 10 sans interface graphique**
+➜ **une VM  Debian 12 <span style="color: red;">sans interface graphique</span>**
+
+![problem](https://media.tenor.com/LoNa2zOMxoAAAAAM/its-very-important-it-matters.gif)
 
 # I. Fundamentals
 
@@ -130,7 +132,7 @@ Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 - il y a bien l'espace disponible attendue sur la partition : `df -h /mnt/raid_storage`
 - vous pouvez lire et écrire sur la partition : `sudo touch /mnt/raid_storage/testfile`, `ls /mnt/raid_storage` 
 
-> *Alors combien de Go dispo avec un RAID5 sur des disques de 10G ?* `20 Go disponible`
+> *Alors combien de Go dispo avec un RAID5 sur des disques de 10G ?* `20 Go disponibles`
 
 🌞 **Mini benchmark**
 
@@ -202,7 +204,7 @@ C'est **un modèle de client/serveur** : on installe un serveur NFS sur une mach
 - Installation du server NFS : `sudo apt-get install nfs-server`
 
 - Ajouter les lignes suivantes dans le fichier de conf `/etc/exports` pour partager les points de montages :
-`/mnt/raid_storage *(rw,sync)`
+`/mnt/raid_storage *(rw,sync)`, `/mnt/lvm_storage *(rw,sync)`
 
 - Application de la configuration : `sudo exportfs -arv`
 
@@ -216,7 +218,17 @@ C'est **un modèle de client/serveur** : on installe un serveur NFS sur une mach
 
 - Il faut maintenant Configurer le firwall pour le partage NFS ne soit actif que sur mon réseau (192.168.248.0):
 
-    - `sudo ufw allow from 192.168.248.0 to any port nfs`
+    - `sudo ufw allow from 192.168.248.0/24 to any port 2049 proto tcp`
+
+    - `sudo ufw allow from 192.168.248.0/24 to any port 2049 proto udp`
+
+![problem](https://media1.tenor.com/m/XC8c8MZFXVQAAAAd/we-have-a-problem-olsen.gif)
+
+- j'ai n'ai pas réussi à monter les partages NFS sur mon client car il manque aussi le port 111 aussi utilisé par NFS:
+
+   - `sudo ufw allow from 192.168.248.0/24 to any port 111 proto tcp`
+
+   - `sudo ufw allow from 192.168.248.0/24 to any port 111 proto udp`
 
 - Vérification du statut du firewall : `sudo ufw status`
 
