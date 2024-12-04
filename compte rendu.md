@@ -212,7 +212,7 @@ C'est **un modèle de client/serveur** : on installe un serveur NFS sur une mach
 
 - Lancement du service NFS : `sudo systemctl start nfs-server`
 
-- Il faut maintenant Configurer le firwall pour le partage NFS ne soit actif que sur mon réseau:
+- Il faut maintenant Configurer le firwall pour le partage NFS ne soit actif que sur mon réseau (192.168.248.0):
 
     - `sudo ufw allow from 192.168.248.0 to any port nfs`
 
@@ -227,16 +227,35 @@ C'est **un modèle de client/serveur** : on installe un serveur NFS sur une mach
 
   - `sudo mkdir -p /mnt/lvm_storage`
 
-- Montez le partage NFS pour /mnt/raid_storage :
+- Montez le partage NFS pour /mnt/raid_storage et /mnt/lvm_storage (en utilisant l'ip du serveur NFS):
 
      - `sudo mount 192.168.248.10:/mnt/raid_storage /mnt/raid_storage`
 
+     - `sudo mount 192.168.248.10:/mnt/raid_storage /mnt/lvm_storage`
+
+- Vérifier que les partages sont bien montés : 
+    - `df -h`
+    - `ls /mnt/raid_storage`
+    - `ls /mnt/lvm_storage`
+
+- Rendre persistant les montages des disques en les lignes ci-dessous dans /etc/fstab:
+
+    - `192.168.248.10:/mnt/raid_storage /mnt/raid_storage nfs defaults 0 0`
+
+    - `192.168.248.10:/mnt/lvm_storage /mnt/lvm_storage nfs defaults 0 0`
+
+- Recharger les montages : `sudo mount -a`
+
 🌞 **Benchmarkz**
 
-- faites un test de vitesse d'écriture sur la partition `mdadm` montée en NFS : `/mnt/raid_storage`
+- faites un test de vitesse d'écriture sur la partition `mdadm` montée en NFS : `/mnt/raid_storage`:
+    
+    - `dd if=/dev/zero of=/mnt/raid_storage/testfile bs=1G count=1 oflag=direct`
+
 - faites un test de vitesse d'écriture sur la partition LVM montée en NFS : `/mnt/lvm_storage`
 
-> Là même avec l'environnement qui n'est pas idéal, la différence devrait être visible. Because réseau.
+    - `dd if=/dev/zero of=/mnt/lvm_storage/testfile bs=1G count=1 oflag=direct`
+
 
 ![bobercurva](https://media.tenor.com/fF4sTbrZvnsAAAAM/bober-kurwa.gif)
 
