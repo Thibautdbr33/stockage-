@@ -18,7 +18,9 @@
 
 - Installer l'outil smartmontools
 - Testez la santé du disque principal /dev/sda : `smartctl -H /dev/sda`
+
 - Affichez des informations détaillées sur le disque : `sudo smartctl -a /dev/sda`
+
 - Malheureusement , les commandes ci-dessus ne fonctionnent pas sur les disques virtuel
 
 🌞 **Espace disque : afficher l'espace disque restant sur la partition `/`**
@@ -32,7 +34,8 @@
 🌞 **Latence disque**
 
 - Installer ioping 
-- utilisez `ioping` pour déterminer la latence disque : `ioping -c 10 -d 1G /dev/sda1`
+
+- utilisez `ioping` pour déterminer la latence disque :  `ioping -c 10 -d 1G /dev/sda1`
 
 🌞 **Déterminer la taille du cache *filesystem***
 
@@ -42,7 +45,6 @@
 
 Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 
-> Assurez-vous que LVM est installé sur votre OS avant de continuer.
 
 🌞 **Ajouter `sdb` comme Physical Volume LVM**
 
@@ -86,7 +88,8 @@ Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 
 🌞 **Configurer un *automount***
 
-- Il n'était pas possible de créer l'automount avec un Debian 12 avec interface de bureau sans raisons apparentes donc j'ai refait le TP avec une machine en CLI.
+- Il n'était pas possible de créer l'automount avec un Debian 12 avec interface de bureau sans raisons apparentes donc j'ai refait le TP avec une machine en sans interface graphique.
+
 - Ajoutez dans /etc/fstab les lignes suivantes :
 - `/dev/mapper/storage-smol_data /mnt/lvm_storage/smol ext4 defaults 0 0`
 - `/dev/mapper/storage-big_data /mnt/lvm_storage/big ext4 defaults 0 0`
@@ -125,8 +128,7 @@ Ici on utilise un des disques supplémentaires branchés à la VM : `sdb`.
 
 - la partition est bien montée : `lsblk`
 - il y a bien l'espace disponible attendue sur la partition : `df -h /mnt/raid_storage`
-- vous pouvez lire et écrire sur la partition : 
--  `sudo touch /mnt/raid_storage/testfile`, `ls /mnt/raid_storage` 
+- vous pouvez lire et écrire sur la partition : `sudo touch /mnt/raid_storage/testfile`, `ls /mnt/raid_storage` 
 
 > *Alors combien de Go dispo avec un RAID5 sur des disques de 10G ?* `20 Go disponible`
 
