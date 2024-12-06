@@ -1,79 +1,15 @@
-# TP2 : Modest Storage SAN
-
-**Dans ce TP, on va mettre en place un (modeste) réseau SAN (SAN Area Network) qui proposera du stockage hautement disponible (highly available).**
-
-L'idée est la suivante :
-
-- **des serveurs de stockage**
-  - ils ont plein de disques
-  - agrégés en RAID
-  - les volumes RAID sont exposés sur le réseau avec iSCSI
-- **des serveurs "chunks"**
-  - ils accèdent aux volumes RAID à travers le réseau
-  - en utilisant du multipathing iSCSI
-  - ils sont membres d'un cluster Moose (système de fichiers distribué)
-- **un serveur Master**
-  - Master du cluster Moose
-  - il permet d'accéder à une partition hautement disponible
-- **un serveur Web**
-  - il monte la partition Moose à travers le réseau
-  - tous les fichiers stockés sont répliqués et hautement disponibles
-
-
-## Sommaire
-
-- [TP2 : Modest Storage SAN](#tp2--modest-storage-san)
-  - [Sommaire](#sommaire)
-- [0. Prérequis](#0-prérequis)
-- [Partie I : Setup GNS](#partie-i--setup-gns)
-  - [1. Ce que ça donne dans GNS](#1-ce-que-ça-donne-dans-gns)
-  - [2. Tableau d'adressage](#2-tableau-dadressage)
-  - [3. Setup réseau et GNS](#3-setup-réseau-et-gns)
-- [II. Partie 2 : SAN network et iSCSI](#ii-partie-2--san-network-et-iscsi)
-- [III. Partie 3 : Système de fichiers distribué](#iii-partie-3--système-de-fichiers-distribué)
+# TP2 : Modest Storage SAN Compte Rendu
 
 # 0. Prérequis
 
 ➜ **Installer VirtualBox**
-
-- ou VMWare Workstation, mais plus relou
-
-➜ **GNS3 installé**
-
-- pour Windows
-  - [installeur GNS3](https://github.com/GNS3/gns3-gui/releases/download/v2.2.50/GNS3-2.2.50-all-in-one.exe)
-  - [GNS3VM pour VirtualBox](https://github.com/GNS3/gns3-gui/releases/download/v2.2.50/GNS3.VM.VirtualBox.2.2.50.zip)
-
-➜ **GNS3 configuré**
-
-- la GNS3VM est importée dans VirtualBox
-  - il faut repérer le réseau host-only auquel elle est branchée
-  - il faut repérer l'adresse IP de votre PC dans ce réseau host-only
-- le serveur de GNS3 écoute sur l'adresse IP repérée plus tôt
-  - dans GNS3 `Edit > Preferences > Server > Host binding`
-- la GNS3VM est activée dans GNS3
-  - dans GNS3 `Edit > Preferences > GNS3VM`
-
-➜ **Switch IOU**
-
-- [télécharger l'IOU ici](https://labhub.eu.org/api/raw/?path=/UNETLAB%20I/addons/iol/bin/i86bi_linux_l2-adventerprisek9-ms.SSA.high_iron_20180510.bin)
-- importez-le dans GNS3 (`Edit > Preferences > IOU Devices`)
-- utilisez la license suivante
-
-```ini
-[license]
-gns3vm = 73635fd3b0a13ad0;
-```
-
-➜ **Machine Linux prête à l'emploi**
-
-- je recommande toujours Rocky
-- machine à jour, avant de cloner
-- firewall activé
-- il faudra la cloner plusieurs fois et l'importer dans GNS
-
+  - Créer une machine linux (j'ai choisi Debian 12 désolé) avec un utilisteur qui à les droits suoders, le service ssh installé et activé, firewall installé et activé avec le ssh allowed 
+  - cloné la machine 6 fois pour avoir 7 machines (master, web, chunk1, chunk2, chunk3, sto1, sto2)
+  - 
 # Partie I : Setup GNS
-
+  - Bien avoir la VM GNS3 dans sur VBox 
+  - Importer un switch dans GNS3 et lui mettre sa licence
+  - Importer les 7 machines dans GNS3 et sui
 
 ## 2. Tableau d'adressage
 
@@ -99,12 +35,6 @@ gns3vm = 73635fd3b0a13ad0;
   - on indique encore une carte de + dans GNS pour `master.tp2.b3`
   - ce sera notre bastion SSH : on se connectera à lui pour se connecter aux autres machines
 - **tout importer dans GNS**
-
-➜ **Mettre en place la topologie GNS**
-
-- placez les VMs, les switches (IOU) et tirer les câbles
-- veillez à ne pas utiliser le slot1 des VMs : il y a la carte NAT
-- tout allumer !
 
 ➜ **Attribuer des adresses IP statiques à toutes les machines**
 
