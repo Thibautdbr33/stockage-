@@ -5,11 +5,11 @@
 ➜ **Installer VirtualBox**
   - Créer une machine linux (j'ai choisi Debian 12 désolé) avec un utilisteur qui à les droits suoders, le service ssh installé et activé, firewall installé et activé avec le ssh allowed 
   - cloné la machine 6 fois pour avoir 7 machines (master, web, chunk1, chunk2, chunk3, sto1, sto2)
-  - 
+
 # Partie I : Setup GNS
   - Bien avoir la VM GNS3 dans sur VBox 
   - Importer un switch dans GNS3 et lui mettre sa licence
-  - Importer les 7 machines dans GNS3 et sui
+  - Importer les 7 machines dans GNS3 et les connecter comme demandé 
 
 ## 2. Tableau d'adressage
 
