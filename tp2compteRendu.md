@@ -1,17 +1,12 @@
 # TP2 : Modest Storage SAN Compte Rendu
-
-# 0. Prérequis
-
-➜ **Installer VirtualBox**
-  - Créer une machine linux (j'ai choisi Debian 12 désolé) avec un utilisteur qui à les droits suoders, le service ssh installé et activé, firewall installé et activé avec le ssh allowed 
-  - cloné la machine 6 fois pour avoir 7 machines (master, web, chunk1, chunk2, chunk3, sto1, sto2)
+# Partie 0 : Prérequis 
+- Avoir GNS3 
+- Avoir VBox 
+- Les isos nécessaires (switch, serveurs)
 
 # Partie I : Setup GNS
-  - Bien avoir la VM GNS3 dans sur VBox 
-  - Importer un switch dans GNS3 et lui mettre sa licence
-  - Importer les 7 machines dans GNS3 et les connecter comme demandé 
 
-## 2. Tableau d'adressage
+## 1. Tableau d'adressage
 
 | Node            | `mgmt-lan`     | `sto1-lan`   | `sto2-lan`   |
 |-----------------|----------------|--------------|--------------|
@@ -23,48 +18,76 @@
 | `master.tp2.b3` | `10.3.250.1`   | x            | x            |
 | `web.tp2.b3`    | `10.3.250.101` | x            | x            |
 
-## 3. Setup réseau et GNS
+## 2. Setup réseau et GNS3
 
 ➜ **Clonez votre machine Linux autant de fois que nécessaire**
+  - Créer une machine linux (j'ai choisi Debian 12 désolé) avec un utilisteur qui à les droits suoders, le service ssh installé et activé, firewall installé et activé avec le ssh allowed et une carte NAT pour avoir internet sur toutes les machines 
+  - cloné la machine 6 fois pour avoir 7 machines (master, web, chunk1, chunk2, chunk3, sto1, sto2)
+  - Avoir la VM GNS3 dans VBox 
+  - Importer l'image du switch et lui mettre sa licence
 
-- **ajoutez bien une carte NAT à toutes les machines**
-  - je recommande en slot 1, comme ça elle s'auto-configurera en DHCP direct
-  - il faudra indiquer une 1 carte de + pour chaque VM dans GNS
+- **Configurer les interfaces réseau**
+  - Importer les VM dans GNS3
+  - Ajouter les cartes réseaux aux machines sur GNS3 et les connecter comme demandé dans le tableau d'adressage
+  - Configurer les interfaces réseau sur chaque machine avec les adresses en fonction du tableau d'adressage 
+
 - **ajoutez une carte host-only supplémentaire à la machine `master.tp2.b3`**
-  - vous l'utiliserez pour vous connecter en SSH
-  - on indique encore une carte de + dans GNS pour `master.tp2.b3`
+  - Pour l'utiliserez pour se connecter en SSH
+  - on indique encore une carte de + dans GNS3 pour `master.tp2.b3`
   - ce sera notre bastion SSH : on se connectera à lui pour se connecter aux autres machines
-- **tout importer dans GNS**
 
-➜ **Attribuer des adresses IP statiques à toutes les machines**
+➜ **Avoir une connexion SSH sur toutes les machines du Réseau**
 
-- vérifiez avec quelques pings que les machines d'un même LAN se ping bien entre elles
-- **attention :** il n'y a pas de routage dans cette topologie, donc les machines ne peuvent joindre que les IPs qui sont dans un LAN auquel elles appartiennent
-- genre `web` pourra jamais ping `sto1` : ils sont pas dans le même LAN
+  - Sur la machine physique, générer une parire de clé ssh `ssh-keygen -t rsa -b 4096 -C` 
 
-➜ **Assurez-vous d'avoir une connexion SSH**
+  - Créer un fichier config là où est la clé ssh générée `C:\Users\thiba\.ssh` pour utiliser la machine `master.tp2.b3` comme bastion SSH grâce au Proxyjump (Utiliser master pour accéder aux autres machines du réseau et chunk1 pour accéder à sto1 et sto2) :
+  ```
+  Host master
+    HostName 192.168.148.5
+    User user1
 
-- sur toutes les machines
-- sans mot de passe, avec clé SSH, ça vous économisera beaucoup les phalanges dans ce TP
-- je recommande l'utilisation de `ProxyJump` SSH, avec un ptit fichier `config` SSH, pour très facilement se connecter rapidement à n'importe quelle machine du lab
-- l'idée est de `ProxyJump` sur `master` pour accéder aux autres machines
+Host chunk1
+    HostName 10.3.250.11
+    User user1
+    ProxyJump master
 
-> Appelez-moi si besoin d'aide sur cette conf !
+Host chunk2
+    HostName 10.3.250.12
+    User user1
+    ProxyJump master
+
+Host chunk3
+    HostName 10.3.250.13
+    User user1
+    ProxyJump master
+
+Host web
+    HostName 10.3.250.101
+    User user1
+    ProxyJump master
+
+Host sto1
+    HostName 10.3.1.1
+    User user1
+    ProxyJump chunk1
+
+Host sto2
+    HostName 10.3.1.2
+    User user1
+    ProxyJump chunk1
+  ```
+
+ - On copie la clé publique générée `C:\Users\thiba\.ssh\id_rsa.pub` dans le fichier `authorized_keys` de toutes les machines du réseau pour ne pas à avoir mettre le mot de passe à chaque fois qu'on se connecte.
 
 ➜ **Attribuez un hostname à chaque machine**
 
 - avec une commande `hostnamectl set-hostname`
 
 ➜ **Remplir le fichier `hosts` de chaque machine**
-
+  ```
+  ```
 - comme ça on utilisera parfois les noms des machines pour mettre en place la config
-- vérifiez avec quelques pings que ça peut se joindre avec les noms
-
-➜ **Toutes les machines ont bien un accès internet**
-
-- la carte NAT est active sur toutes les machines
-
-Vous passez à la suite qu'une fois que tout est setup, connexion SSH partout qui est facile, tout le monde a ses IPs étou étou.
+- On vérifie avec quelques pings que ça peut se joindre avec les noms
 
 # II. SAN network
 
