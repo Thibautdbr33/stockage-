@@ -84,8 +84,28 @@ Host sto2
 - avec une commande `hostnamectl set-hostname`
 
 ➜ **Remplir le fichier `hosts` de chaque machine**
-  ```
-  ```
+- contenue du fichier `/etc/hosts` de chaques machines du réseau
+```
+127.0.0.1       localhost
+127.0.1.1       debian
+127.0.0.1       localhost
+
+10.3.2.1        sto1.tp2.b3 sto1
+10.3.2.2        sto2.tp2.b3 sto2
+10.3.3.1        chunk1.tp2.b3 chunk1
+10.3.3.101      chunk1.tp2.b3 chunk1
+10.3.3.2        chunk2.tp2.b3 chunk2
+10.3.3.102      chunk2.tp2.b3 chunk2
+10.3.3.3        chunk3.tp2.b3 chunk3
+10.3.3.103      chunk3.tp2.b3 chunk3
+10.3.250.1      master.tp2.b3 master
+10.3.250.101    web.tp2.b3 web
+
+# The following lines are desirable for IPv6 capable hosts
+::1             localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+```
 - comme ça on utilisera parfois les noms des machines pour mettre en place la config
 - On vérifie avec quelques pings que ça peut se joindre avec les noms
 
@@ -95,20 +115,16 @@ Dans cette partie, on va travailler autour du (modeste) réseau SAN : les machin
 
 L'objectif est le suivant :
 
-- **les machines de stockage**
-  - ont plein plein de disques
-  - ont du RAID configuré
+- **les machines de stockage (sto1 et sto2)**
+  - ont chacun 6 disques chacuns ( en plus du disque principal)
+  - ont 3 RAID1 configurés
   - propose les volumes RAID à travers le réseau comme *target iSCSI*
 - **les machines "chunks"**
   - accèdent aux disque des machines de stockage
   - grâce à iSCSI
   - mise en place d'un *multipathing iSCSI*
 
-Le *multipathing* permet de prévenir d'une éventuelle défaillance d'un lien réseau en proposant deux chemins d'accès réseau pour accéder à un disque donné en iSCSI.
-
 > *En milieu pro, dans des environnements de grande taille, on voit aussi beaucoup de câbles fibre optique, et le protocole FC (Fiber Channel) qui remplace iSCSI. Il faut alors utiliser des switches spécialisés (la gamme 9000 chez Cisco : les switches MDS, spécifiques pour les SAN). Les concepts restent les mêmes : FC transporte du trafic SCSI.*
-
-Pour setup tout ça, on va utiliser les tools standards de Open iSCSI.
 
 
 ## 1. Storage machines
@@ -117,27 +133,23 @@ Pour setup tout ça, on va utiliser les tools standards de Open iSCSI.
 
 ### A. Disks and RAID
 
-On va au supermarché (celui de VBox, c'est gratuit) et on ajoute plein de disques aux machines, pour configurer du RAID, notre premier niveau de redondance.
 
-➜ **Ajouter des disques aux machines `sto1` et `sto2`**
+➜ **Ajouter des disques aux machines `sto1` et `sto2` dans Vbox**
 
-- combien ? de quelle taille ? en vrai faites vous plais
-- à la fin on veut (au minimum) 3 volumes RAID sur chaque `sto`
-- au plus simple
-  - 6 disques, pour faire 3 RAID1
-  - au minimum 1G par disque
-- **la même taille pour tous les disques**
+  - 6 disques sur chaque sto, pour faire 3 RAID1 sur chaque sto
+  - 2G par disque
 
 🌞 **Configurer des RAID**
 
-- à la fin, on veut 3 volumes RAID sur `sto1` et 3 volumes RAID sur `sto2`
-- vous pouvez faire le setup simple indiqué avant ou vous faire un peu plais et partir sur du RAID5 par exemple
-- **il faut 3 volumes RAID prêts à l'emploi en fin de setup**
-- vous utiliserez MDADM pour mettre en place les RAID
+- On veut 3 RAID1 sur chaques sto avec des noms (je les avaient pas nommé au débuts et ça à m'a renommé mes RAID ducoup j'ai du refaire) :
+  - ``
+  - ``
 
 🌞 **Prouvez que vous avez 3 volumes RAID prêts à l'emploi**
 
-- avec une commande `lsblk`
+- avec une commande `lsblk` on voit qu'il sont bien là (pareil sur les deux machines sto) :
+```
+```
 
 
 ### B. iSCSI target
@@ -154,17 +166,17 @@ Pour ça, on va utiliser l'outil `target` dispo sous les OS Linux.
 
 🌞 **Installer `target`**
 
-- c'est le paquet `targetcli`
+- c'est le paquet `targetcli-fb` (-fb car sur Debian 12, le paquet `targetcli` n'est pas trouvé)
 
 🌞 **Démarrer le service `target`**
 
-- activez le aussi au démarrage de la machine
+- On l'active aussi au démarrage de la machine : `sudo systemctl enable --now targetclid.service`
 
 🌞 **Configurer les *targets iSCSI***
 
 - il faut configurer :
   - 3 target iSCSI sur chaque machine : un pour exposer chacun des volumes RAID
-  - une ACL sur chaque target (vous pouvez try de mettre une authent, mais je vous conseille de rester simple)
+  - une ACL sur chaque target 
 - chaque target doit respecter la convention de nommage pour son IQN :
   - `iqn.2024-12.tp2.b3:data-chunk1` pour le premier target iSCSI (destiné à être utilisé par la machine `chunk1.tp2.b3`)
   - `iqn.2024-12.tp2.b3:data-chunk2` pour le deuxième
@@ -191,7 +203,7 @@ $ sudo targetcli
 /> exit
 ```
 
-➜ **Vous devriez avoir un truc comme ça une fois en place, avec les trois volumes RAID exposés comme target :**
+➜ **Une fois en place, ça donne ça avec les trois volumes RAID exposés comme target :**
 
 ```bash
 [it4@sto1 ~]$ sudo targetcli
@@ -248,11 +260,7 @@ o- / ......................................................... [...]
 
 ## 2. Chunks machine
 
-> **On passe sur juste `chunk1.tp2.b3` pour cette partie.** Vous répliquerez la conf que vous allez tester sur lui une fois que c'est ok sur les deux autres : `chunk2.tp2.b3` et `chunk3.tp2.b3`. Uniquement sur `chunk1.tp2.b3` pour le moment donc.
-
-Ici, on va configurer `chunk1.tp2.b3` pour qu'il utilise un *iSCSI initiator* afin d'accéder aux volumes RAID proposés sur le réseau par `sto1` et `sto2`.
-
-Y'a un tool très répandu sur les OS Linux pour utiliser iSCSI : `iscsiadm` et le démon `iscsid`.
+Ici, on va configurer `chunk1.tp2.b3` pour qu'il utilise un *iSCSI initiator* afin d'accéder aux volumes RAID proposés sur le réseau par `sto1` et `sto2`. Les commandes sont à refaire sur chaques chunk en modifiant le nom chunk1.
 
 Avec `iscsiadm` on peut :
 
@@ -263,26 +271,28 @@ Avec `iscsiadm` on peut :
 
 ### A. Simple iSCSI
 
-🌞 **Installer les tools iSCSI sur `chunk1.tp2.b3`**
+🌞 **Installer les tools iSCSI sur `chunk1.tp2.b3` et les autres chunk**
 
 - c'est le paquet `iscsi-initiator-utils`
 
 🌞 **Configurer un iSCSI initiator**
 
-- utilisez `iscsiadm` pour découvrir les *targets iSCSI* proposés par `sto1` et `sto2`
-- faites vos recherches pour la conf, c'est une conf plutôt standard
-- les commandes `iscsiadm` génèrent des fichiers dans `/var/lib/iscsi`
-- découvrez et utilisez les targets destinés à cette machine, y'en a 4 :
-  - `iqn.2024-12.tp2.b3:chunk1` sur
-    - `sto1` donc : `10.3.1.1` et `10.3.1.2`
-    - `sto2` donc : `10.3.2.1` et `10.3.2.2`
-- n'oubliez pas d'activer dès le démarrage de la machine les services iSCSI
-  - service `iscsi`
-  - service `iscsid`
-- je vous donne la première commande :
+- On change l'initiatorName dans `/etc/iscsi/initiatorname.iscsi ` pour les chunk (on trouve l'initiatorName en targetcli sur les sto `/iscsi/iqn.2024-12.tp2.b3:data-chunk1/tpg1/acls ls`):
+    - `InitiatorName=iqn.2024-12.tp2.b3:chunk1-initiator`
 
-```bash
+- On effectue un discover pour trouver les targets iSCSI sur les sto:
+```
+sudo iscsiadm -m discoverydb -t st -p 10.3.2.1:3260 --discover
+sudo iscsiadm -m discoverydb -t st -p 10.3.2.2:3260 --discover
 sudo iscsiadm -m discoverydb -t st -p 10.3.1.1:3260 --discover
+sudo iscsiadm -m discoverydb -t st -p 10.3.1.2:3260 --discover
+```
+- Puis on se connecte à un target iSCSI (ici `sto1`) :
+```
+sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.1.1:3260 --login
+sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.1.2:3260 --login
+sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.2.1:3260 --login
+sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.2.2:3260 --login
 ```
 
 > On peut par exemple aussi lister les hôtes découverts et utilisables avec `sudo iscsiadm -m node`.
@@ -294,14 +304,17 @@ sudo iscsiadm -m discoverydb -t st -p 10.3.1.1:3260 --discover
 - mettez lui 0 pour valeur, ça donne : `node.session.timeo.replacement_timeout = 0`
 - redémarrer les services `iscsi` et `iscsid`
 
-> *Vivement recommandé d'aller voir ce que fait cette option de config !*
-
 🌞 **Prouvez que la configuration est prête**
 
-- avec `lsblk` on doit voir les volumes
-  - on doit donc voir 4 volumes en iSCSI
-  - y'en a que deux en réalité (un proposé par `sto1` et un proposé par `sto2`) mais on les utilise depuis deux IPs différents à chaque fois, donc on les voit en double
-- une commande `iscsiadm -m session -P 3` aussi dans le compte-rendu : on y voit en détails les connexions iSCSI en cours
+- avec `lsblk` on voit l4 volumes en iSCSI :
+  ```
+  
+  ```
+  - il n'y en a que deux en réalité (un proposé par `sto1` et un proposé par `sto2`) mais on les utilise depuis deux IPs différents à chaque fois, donc on les voit en double
+- Avec la commande `iscsiadm -m session` (-P 3 pour plus de détails) on y voit les connexions iSCSI en cours:
+```
+
+```
 
 ### B. Multipathing
 
@@ -521,5 +534,3 @@ $ multipath -ll
 - agrandir les RAID
 - ajouter des RAID/targets
 - ajouter un initiator
-
-Let's go, on enchaîne sur un setup de système de fichiers distribué sur ces 3 serveurs "chunk" (donc le nom va prendre sens).
