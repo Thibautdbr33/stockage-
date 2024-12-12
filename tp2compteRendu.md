@@ -21,7 +21,7 @@
 ## 2. Setup réseau et GNS3
 
 ➜ **Clonez votre machine Linux autant de fois que nécessaire**
-  - Créer une machine linux (j'ai choisi Debian 12 désolé) avec un utilisteur qui à les droits suoders, le service ssh installé et activé, firewall installé et activé avec le ssh allowed et une carte NAT pour avoir internet sur toutes les machines 
+  - Créer une machine linux (j'ai choisi Debian 12 désolé) avec un utilisteur qui à les droits suoders, le service ssh installé et activé, firewall installé et activé avec le ssh, port  allowed et une carte NAT pour avoir internet sur toutes les machines 
   - cloné la machine 6 fois pour avoir 7 machines (master, web, chunk1, chunk2, chunk3, sto1, sto2)
   - Avoir la VM GNS3 dans VBox 
   - Importer l'image du switch et lui mettre sa licence
@@ -141,9 +141,18 @@ L'objectif est le suivant :
 
 🌞 **Configurer des RAID**
 
-- On veut 3 RAID1 sur chaques sto avec des noms (je les avaient pas nommé au débuts et ça à m'a renommé mes RAID ducoup j'ai du refaire) :
-  - ``
-  - ``
+- On veut 3 RAID1 sur chaques sto avec des noms (je les avaient pas nommé au débuts et ça à m'a renommé mes RAID ducoup j'ai du refaire en les nommants comme felipe parceque j'avais pas d'inspi) :
+
+   ```
+  mdadm --create /dev/md/messi --level=1 --raid-devices=2 /dev/sdb /dev/sdc
+  mdadm --create /dev/md/neymar --level=1 --raid-devices=2 /dev/sdd /dev/sde
+  mdadm --create /dev/md/suarez --level=1 --raid-devices=2 /dev/sdf /dev/sdg
+   ```
+- On configure la persistance de ces volumes RAID au démarrage en ajoutant leur configuration dans /etc/mdadm/mdadm.conf :
+  - `mdadm --detail --scan >> /etc/mdadm/mdadm.conf`
+
+- Mettre à jour l'initramfs pour inclure les configurations RAID au démarrage :
+  - update-initramfs -u
 
 🌞 **Prouvez que vous avez 3 volumes RAID prêts à l'emploi**
 
@@ -182,28 +191,39 @@ Pour ça, on va utiliser l'outil `target` dispo sous les OS Linux.
   - `iqn.2024-12.tp2.b3:data-chunk2` pour le deuxième
   - et `iqn.2024-12.tp2.b3:data-chunk3`
 - en utilisant `target-cli`
-  - exemple pour créer un target
 
 ```bash
 $ sudo targetcli
 
-# on crée un objet fileio que target peut gérer à partir de notre volume RAID
-/> /backstores/fileio create name=data-chunk1 file_or_dev=/dev/path/vers/RAID
+# on crée des objets fileio que target peut gérer à partir de notre volume RAID
+/> /backstores/fileio create messi /dev/md/messi
+/> /backstores/fileio create neymar /dev/md/neymar
+/> /backstores/fileio create suarez /dev/md/suarez
+
 
 # on crée un IQN : un identifiant iSCSI unique
 /> /iscsi create iqn.2024-12.tp2.b3:data-chunk1
+/> /iscsi create iqn.2024-12.tp2.b3:data-chunk2
+/> /iscsi create iqn.2024-12.tp2.b3:data-chunk3
 
 # on crée une ACL pour que notre initator puisse accéder à ce target iSCSI
-/> /iscsi/iqn.2024-12.tp2.b3:data-chunk1/tpg1/acls create iqn.2024-12.tp2.b3:data-chunk1:chunk1-initiator
+/> /iscsi/iqn.2024-12.tp2.b3:data-chunk1/tpg1/acls create iqn.2024-12.tp2.b3:chunk1-initiator
+/> /iscsi/iqn.2024-12.tp2.b3:data-chunk2/tpg1/acls create iqn.2024-12.tp2.b3:chunk2-initiator
+/> /iscsi/iqn.2024-12.tp2.b3:data-chunk3/tpg1/acls create iqn.2024-12.tp2.b3:chunk3-initiator
+
 
 # on map un LUN de notre target iSCSI vers notre objet fileio (le volume RAID)
-/> /iscsi/iqn.2024-12.tp2.b3:data-chunk1/tpg1/luns/ create /backstores/fileio/data-chunk1
+/> /iscsi/iqn.2024-12.tp2.b3:data-chunk1/tpg1/luns create /backstores/fileio/messi
+/> /iscsi/iqn.2024-12.tp2.b3:data-chunk2/tpg1/luns create /backstores/fileio/neymar
+/> /iscsi/iqn.2024-12.tp2.b3:data-chunk3/tpg1/luns create /backstores/fileio/suarez
+
 
 /> saveconfig
 /> exit
 ```
 
 ➜ **Une fois en place, ça donne ça avec les trois volumes RAID exposés comme target :**
+`sudo targetcli ls`
 
 ```bash
 [it4@sto1 ~]$ sudo targetcli
@@ -273,7 +293,9 @@ Avec `iscsiadm` on peut :
 
 🌞 **Installer les tools iSCSI sur `chunk1.tp2.b3` et les autres chunk**
 
-- c'est le paquet `iscsi-initiator-utils`
+- c'est le paquet `iscsi-initiator-utils`:
+
+  - `sudo apt install -y open-iscsi`
 
 🌞 **Configurer un iSCSI initiator**
 
@@ -303,6 +325,7 @@ sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.
 - modifier la ligne `node.session.timeo.replacement_timeout`
 - mettez lui 0 pour valeur, ça donne : `node.session.timeo.replacement_timeout = 0`
 - redémarrer les services `iscsi` et `iscsid`
+- Cette manip n'est pas à faire parceque signifie que si une connexion iSCSI est interrompue, elle ne tentera pas de se rétablir automatiquement. On doit redémarrer manuellement la session pour rétablir la connexion.
 
 🌞 **Prouvez que la configuration est prête**
 
@@ -326,11 +349,13 @@ On va configurer le *multipathing* pour que la machine `chunk1` ne voit que deux
 
 🌞 **Installer les outils multipath sur `chunk1.tp2.b3`**
 
-- c'est le paquet `device-mapper-multipath`
+- c'est le paquet `device-mapper-multipath`: `sudo apt install -y device-mapper-multipath`
+- Activez le service de multipath : `sudo systemctl enable --now multipath-tools.service`
 
 🌞 **Configurer le fichier `/etc/multipath.conf`**
 
 - récupérez le fichier d'exemple `usr/share/doc/device-mapper-multipath/multipath.conf`
+- `sudo cp /usr/share/doc/device-mapper-multipath/examples/multipath.conf /etc/multipath.conf`
 - modifier la section ``defaults` comme ceci :
 
 ```conf
@@ -343,7 +368,10 @@ defaults {
 }
 ```
 
-🌞 **Démarrer le service `multipathd`**
+🌞 **Recharger la configuration et redémarrer le service :**
+
+- `sudo systemctl restart multipath-tools.service`
+- `sudo multipath -r`
 
 🌞 **Et euh c'est tout, il est smart enough**
 
