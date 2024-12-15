@@ -611,13 +611,13 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
 
    On voit le message : `Hello, MooseFS!`
 
-   Pour prouver que le site est actif depuis une autre machine, utilisez la commande suivante :
+   Pour prouver que le site est actif depuis une autre machine, on utilise la commande suivante :
 
 ```bash
 curl http://web.tp2.b3
 ```
 
-Vous on voit aussi la réponse :
+On voit aussi la réponse :
 
 ```html
 Hello, MooseFS!
