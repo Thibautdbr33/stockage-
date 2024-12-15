@@ -166,7 +166,7 @@
 
 ### 2. Chunk Machines
 
-#### A. Configuration iSCSI
+#### A. Configuration iSCSI sur les Chunk Machines (Je fais pour chunk 1)
 
 1. Installez les outils iSCSI :
    ```bash
@@ -178,11 +178,17 @@
    ```
 3. Découvrez les targets iSCSI :
    ```bash
+   sudo iscsiadm -m discoverydb -t st -p 10.3.2.1:3260 --discover
+   sudo iscsiadm -m discoverydb -t st -p 10.3.2.2:3260 --discover
    sudo iscsiadm -m discoverydb -t st -p 10.3.1.1:3260 --discover
+   sudo iscsiadm -m discoverydb -t st -p 10.3.1.2:3260 --discover
    ```
 4. Connectez-vous aux targets :
    ```bash
-   sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --login
+   sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.1.1:3260 --login
+   sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.1.2:3260 --login
+   sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.2.1:3260 --login
+   sudo iscsiadm -m node --targetname iqn.2024-12.tp2.b3:data-chunk1 --portal 10.3.2.2:3260 --login
    ```
 
 #### B. Multipathing
@@ -203,7 +209,7 @@
 
 4. Modifiez la section `defaults` pour configurer les options suivantes :
 
-5. Assurez-vous que le fichier `/etc/multipath.conf` contient les paramètres suivants :
+5. s'assurer que le fichier `/etc/multipath.conf` contient les paramètres suivants :
 
    ```plaintext
    defaults {
