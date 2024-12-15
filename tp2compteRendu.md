@@ -404,5 +404,194 @@ size=511M features='1 queue_if_no_path' hwhandler='1 alua' wp=rw
   `- 5:0:0:0 sdc 8:32 active ready running
 ```
 
+# Partie III : Système de Fichiers Distribué
+
+## Introduction
+
+Nous allons étendre notre infrastructure existante (SAN) en ajoutant un système de fichiers distribé avec **MooseFS**. Ce dernier ajoute un niveau supplémentaire de redondance, en répliquant les fichiers entre plusieurs serveurs chunk. Voici la structure finale :
+
+- **Moose Master Server** : `master.tp2.b3`
+  - Contient les métadonnées et expose les partitions réseau.
+  - Fournit une WebUI pour la gestion (accessible sur `http://<master>:9425`).
+- **Moose Chunk Servers** : `chunk1.tp2.b3`, `chunk2.tp2.b3`, `chunk3.tp2.b3`
+  - Gèrent le stockage des données répliquées.
+  - Proposent deux volumes : `/mnt/data_chunk1` et `/mnt/data_chunk2`.
+- **Web Server** : `web.tp2.b3`
+  - Consomme les partitions distribuées, à l'aide d'un serveur **NGINX**.
+
+---
+
+## 1. Moose Master Server
+
+### Installation et Configuration
+
+> ***Sur ******`master.tp2.b3`****** uniquement.***
+
+1. **Installer MooseFS Master et la WebUI**
+
+   Ajoutez le dépôt et installez les paquets :
+
+   ```bash
+   wget -O /etc/yum.repos.d/MooseFS-3-el9.repo https://ppa.moosefs.com/MooseFS-3-el9.repo
+   sudo dnf install moosefs-master moosefs-cgi -y
+   ```
+
+2. **Démarrer les services**
+
+   Activez et lancez les services requis :
+
+   ```bash
+   sudo systemctl enable --now moosefs-master
+   sudo systemctl enable --now moosefs-cgi
+   ```
+
+3. **Configurer le firewall**
+
+   Ouvrez les ports requis pour MooseFS :
+
+   ```bash
+   sudo ufw allow 80/tcp
+   sudo ufw allow 9425/tcp
+   sudo ufw allow 9419/tcp
+   sudo ufw allow 9420/tcp
+   sudo ufw allow 9421/tcp
+   sudo ufw reload
+   ```
+
+4. **Accéder à la WebUI**
+
+   La WebUI est disponible sur :
+
+   ```
+   http://<IP_MASTER>:9425
+   ```
+
+   Elle permet de superviser les chunks et le stockage.
+
+---
+
+## 2. Moose Chunk Servers
+
+> ***Sur ******`chunk1.tp2.b3`******, ******`chunk2.tp2.b3`****** et ******`chunk3.tp2.b3`******.***
+
+### Installation et Configuration
+
+1. **Installer MooseFS Chunk Server**
+
+   Ajoutez le dépôt et installez les paquets :
+
+   ```bash
+   wget -O /etc/yum.repos.d/MooseFS-3-el9.repo https://ppa.moosefs.com/MooseFS-3-el9.repo
+   sudo dnf install moosefs-chunkserver -y
+   ```
+
+2. **Configurer le Chunk Server**
+
+   Modifiez le fichier `/etc/mfs/mfschunkserver.cfg` pour indiquer l'adresse du serveur master :
+
+   ```bash
+   MASTER_HOST = master.tp2.b3
+   ```
+
+3. **Préparer les partitions**
+
+   Attribuez les partitions à l'utilisateur `mfs` :
+
+   ```bash
+   sudo chown -R mfs:mfs /mnt/data_chunk1
+   sudo chown -R mfs:mfs /mnt/data_chunk2
+   ```
+
+   Ajoutez les partitions dans `/etc/mfs/mfshdd.cfg` :
+
+   ```bash
+   /mnt/data_chunk1
+   /mnt/data_chunk2
+   ```
+
+4. **Démarrer le service Chunk Server**
+
+   Activez et lancez le service :
+
+   ```bash
+   sudo systemctl enable --now moosefs-chunkserver
+   ```
+
+5. **Vérification**
+
+   Sur la WebUI de `master.tp2.b3`, les trois noeuds Chunk doivent apparaître comme actifs, avec les volumes disponibles.
+
+---
+
+## 3. Machine Consommatrice : Web Server
+
+> ***Sur ******`web.tp2.b3`****** uniquement.***
+
+### Installation et Configuration
+
+1. **Installer MooseFS Client**
+
+   Ajoutez le dépôt et installez les paquets :
+
+   ```bash
+   wget -O /etc/yum.repos.d/MooseFS-3-el9.repo https://ppa.moosefs.com/MooseFS-3-el9.repo
+   sudo dnf install moosefs-client -y
+   ```
+
+2. **Monter la partition MooseFS**
+
+   Créez un point de montage et montez la partition :
+
+   ```bash
+   sudo mkdir -p /mnt/www
+   sudo mfsmount /mnt/www -H master.tp2.b3
+   ```
+
+   Vérifiez avec `lsblk` et assurez-vous que la partition est bien montée.
+
+3. **Installer NGINX**
+
+   Installez le serveur web et ouvrez le port 80 :
+
+   ```bash
+   sudo dnf install nginx -y
+   sudo ufw allow 80/tcp
+   ```
+
+4. **Configurer le serveur web**
+
+   Créez un fichier `index.html` dans `/mnt/www` :
+
+   ```bash
+   echo "Hello, MooseFS!" | sudo tee /mnt/www/index.html
+   ```
+
+   Créez une configuration minimale pour NGINX :
+
+   ```bash
+   sudo nano /etc/nginx/conf.d/default.conf
+   ```
+
+   ```nginx
+   server {
+       listen 80;
+       server_name _;
+       root /mnt/www;
+       index index.html;
+   }
+   ```
+
+5. **Démarrer et tester le service**
+
+   Lancez le service et vérifiez :
+
+   ```bash
+   sudo systemctl enable --now nginx
+   curl http://localhost
+   ```
+
+   On voit le message : `Hello, MooseFS!`
+
+
 
 
