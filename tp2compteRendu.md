@@ -26,13 +26,19 @@
 
 #### Clonez votre machine Linux
 
-1. Créez une machine Linux sous **Debian 12** :
+1. Créez une machine Linux et avoir cette config j'ai choisi **Debian 12** (désolé):
+
+![sorry](https://media1.tenor.com/m/GJcRHVW2LwYAAAAd/whatever-duh.gif)
+
    - Un utilisateur disposant des droits sudo.
    - SSH installé et activé.
    - Firewall configuré avec le port SSH ouvert.
    - Une carte NAT pour l'accès à Internet.
 2. Clonez cette machine **6 fois** pour obtenir 7 VMs :
    - `master`, `web`, `chunk1`, `chunk2`, `chunk3`, `sto1`, et `sto2`.
+
+![again](https://media1.tenor.com/m/Uo8tYyr9lVUAAAAC/again-and-again-and-again-arun-maini.gif)
+
 
 #### Ajouter et configurer les cartes réseau
 
@@ -98,6 +104,8 @@
    ```
 3. Vérifiez avec `ping <hostname>`.
 
+![easy](https://media1.tenor.com/m/7Gz6Wttb-xAAAAAd/its-gonna-be-so-easy-frank-sinatra.gif)
+
 ---
 
 ## Partie II : SAN Network
@@ -107,7 +115,10 @@
 #### A. Disques et RAID
 
 1. Ajoutez **6 disques** de 2 Go à `sto1` et `sto2`.
-2. Configurez 3 RAID1 nommés `messi`, `neymar` et `suarez` :
+2. Configurez 3 RAID1 ici nommés `messi`, `neymar` et `suarez` :
+
+![easy](https://media1.tenor.com/m/GYw66pbJHHsAAAAd/messichad-messi.gif)
+
    ```bash
    sudo mdadm --create /dev/md/messi --level=1 --raid-devices=2 /dev/sdb /dev/sdc
    sudo mdadm --create /dev/md/neymar --level=1 --raid-devices=2 /dev/sdd /dev/sde
@@ -403,6 +414,8 @@ size=511M features='1 queue_if_no_path' hwhandler='1 alua' wp=rw
 `-+- policy='service-time 0' prio=50 status=enabled
   `- 5:0:0:0 sdc 8:32 active ready running
 ```
+![easy](https://media1.tenor.com/m/qXkUtlnTNI0AAAAd/rain.gif)
+
 
 # Partie III : Système de Fichiers Distribué
 
@@ -591,6 +604,21 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
    ```
 
    On voit le message : `Hello, MooseFS!`
+
+   Pour prouver que le site est actif depuis une autre machine, utilisez la commande suivante :
+
+```bash
+curl http://web.tp2.b3
+```
+
+Vous on voit aussi la réponse :
+
+```html
+Hello, MooseFS!
+```
+![easy](https://media1.tenor.com/m/nB37dEyQ_H4AAAAC/hey-cat.gif)
+
+
 
 
 
