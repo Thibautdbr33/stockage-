@@ -423,11 +423,11 @@ size=511M features='1 queue_if_no_path' hwhandler='1 alua' wp=rw
 ![easy](https://media1.tenor.com/m/qXkUtlnTNI0AAAAd/rain.gif)
 
 
-# Partie III : Système de Fichiers Distribué
+# TP2 : Modest Storage SAN - Partie III : Système de Fichiers Distribué
 
 ## Introduction
 
-Nous allons étendre notre infrastructure existante (SAN) en ajoutant un système de fichiers distribé avec **MooseFS**. Ce dernier ajoute un niveau supplémentaire de redondance, en répliquant les fichiers entre plusieurs serveurs chunk. Voici la structure finale :
+Nous allons étendre notre infrastructure existante (SAN) en ajoutant un système de fichiers distribué avec **MooseFS**. Ce dernier ajoute un niveau supplémentaire de redondance, en répliquant les fichiers entre plusieurs serveurs chunk. Voici la structure finale :
 
 - **Moose Master Server** : `master.tp2.b3`
   - Contient les métadonnées et expose les partitions réseau.
@@ -444,15 +444,17 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
 
 ### Installation et Configuration
 
-> ***Sur ******`master.tp2.b3`****** uniquement.***
+> ***Sur `master.tp2.b3` uniquement.***
 
 1. **Installer MooseFS Master et la WebUI**
 
    Ajoutez le dépôt et installez les paquets :
 
    ```bash
-   wget -O /etc/yum.repos.d/MooseFS-3-el9.repo https://ppa.moosefs.com/MooseFS-3-el9.repo
-   sudo dnf install moosefs-master moosefs-cgi -y
+   wget -O - https://ppa.moosefs.com/MooseFS-3.gpg.key | sudo apt-key add -
+   echo "deb [arch=amd64] http://ppa.moosefs.com/moosefs-3/apt/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/moosefs.list
+   sudo apt update
+   sudo apt install moosefs-master moosefs-cgi -y
    ```
 
 2. **Démarrer les services**
@@ -491,7 +493,7 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
 
 ## 2. Moose Chunk Servers
 
-> ***Sur ******`chunk1.tp2.b3`******, ******`chunk2.tp2.b3`****** et ******`chunk3.tp2.b3`******.***
+> ***Sur `chunk1.tp2.b3`, `chunk2.tp2.b3` et `chunk3.tp2.b3`.***
 
 ### Installation et Configuration
 
@@ -500,8 +502,10 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
    Ajoutez le dépôt et installez les paquets :
 
    ```bash
-   wget -O /etc/yum.repos.d/MooseFS-3-el9.repo https://ppa.moosefs.com/MooseFS-3-el9.repo
-   sudo dnf install moosefs-chunkserver -y
+   wget -O - https://ppa.moosefs.com/MooseFS-3.gpg.key | sudo apt-key add -
+   echo "deb [arch=amd64] http://ppa.moosefs.com/moosefs-3/apt/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/moosefs.list
+   sudo apt update
+   sudo apt install moosefs-chunkserver -y
    ```
 
 2. **Configurer le Chunk Server**
@@ -544,7 +548,7 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
 
 ## 3. Machine Consommatrice : Web Server
 
-> ***Sur ******`web.tp2.b3`****** uniquement.***
+> ***Sur `web.tp2.b3` uniquement.***
 
 ### Installation et Configuration
 
@@ -553,8 +557,10 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
    Ajoutez le dépôt et installez les paquets :
 
    ```bash
-   wget -O /etc/yum.repos.d/MooseFS-3-el9.repo https://ppa.moosefs.com/MooseFS-3-el9.repo
-   sudo dnf install moosefs-client -y
+   wget -O - https://ppa.moosefs.com/MooseFS-3.gpg.key | sudo apt-key add -
+   echo "deb [arch=amd64] http://ppa.moosefs.com/moosefs-3/apt/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/moosefs.list
+   sudo apt update
+   sudo apt install moosefs-client -y
    ```
 
 2. **Monter la partition MooseFS**
@@ -573,7 +579,7 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
    Installez le serveur web et ouvrez le port 80 :
 
    ```bash
-   sudo dnf install nginx -y
+   sudo apt install nginx -y
    sudo ufw allow 80/tcp
    ```
 
@@ -588,7 +594,7 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
    Créez une configuration minimale pour NGINX :
 
    ```bash
-   sudo nano /etc/nginx/conf.d/default.conf
+   sudo nano /etc/nginx/sites-available/default
    ```
 
    ```nginx
@@ -609,7 +615,19 @@ Nous allons étendre notre infrastructure existante (SAN) en ajoutant un systèm
    curl http://localhost
    ```
 
-   On voit le message : `Hello, MooseFS!`
+   Vous devriez voir le message : `Hello, MooseFS!`
+
+   Pour prouver que le site est actif depuis une autre machine, utilisez la commande suivante :
+
+   ```bash
+   curl http://web.tp2.b3
+   ```
+
+   On voit la réponse :
+
+   ```html
+   Hello, MooseFS!
+   ```
 
    Pour prouver que le site est actif depuis une autre machine, on utilise la commande suivante :
 
